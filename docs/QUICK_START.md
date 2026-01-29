@@ -191,11 +191,8 @@ spring:
 
 ## 🚀 3. 启动管理端
 
-在`data-agent-management`目录下，运行 `DataAgentApplication.java` 类。
-
 ```bash
-cd data-agent-management
-./mvnw spring-boot:run
+mvnw -pl data-agent-management spring-boot:run
 ```
 
 或者在IDE中直接运行 `DataAgentApplication.java`。
