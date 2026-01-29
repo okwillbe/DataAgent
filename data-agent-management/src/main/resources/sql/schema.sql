@@ -1,3 +1,6 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- 简化的数据库初始化脚本，兼容Spring Boot SQL初始化
 
 -- 智能体表
@@ -20,7 +23,7 @@ CREATE TABLE IF NOT EXISTS agent (
     INDEX idx_status (status),
     INDEX idx_category (category),
     INDEX idx_admin_id (admin_id)
-    ) ENGINE = InnoDB COMMENT = '智能体表';
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '智能体表';
 
 -- 业务知识表
 CREATE TABLE IF NOT EXISTS business_knowledge (
@@ -42,7 +45,7 @@ CREATE TABLE IF NOT EXISTS business_knowledge (
   INDEX idx_embedding_status (embedding_status),
   INDEX idx_is_deleted (is_deleted),
   FOREIGN KEY (agent_id) REFERENCES agent(id) ON DELETE CASCADE
-) ENGINE = InnoDB COMMENT = '业务知识表';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '业务知识表';
 
 -- 语义模型表
 CREATE TABLE IF NOT EXISTS `semantic_model` (
@@ -115,7 +118,7 @@ CREATE TABLE IF NOT EXISTS datasource (
   INDEX idx_type (type),
   INDEX idx_status (status),
   INDEX idx_creator_id (creator_id)
-) ENGINE = InnoDB COMMENT = '数据源表';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '数据源表';
 
 -- 逻辑外键配置表
 CREATE TABLE IF NOT EXISTS logical_relation (
@@ -151,7 +154,7 @@ CREATE TABLE IF NOT EXISTS agent_datasource (
   INDEX idx_is_active (is_active),
   FOREIGN KEY (agent_id) REFERENCES agent(id) ON DELETE CASCADE,
   FOREIGN KEY (datasource_id) REFERENCES datasource(id) ON DELETE CASCADE
-) ENGINE = InnoDB COMMENT = '智能体数据源关联表';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '智能体数据源关联表';
 
 -- 智能体预设问题表
 CREATE TABLE IF NOT EXISTS agent_preset_question (
@@ -167,13 +170,13 @@ CREATE TABLE IF NOT EXISTS agent_preset_question (
   INDEX idx_sort_order (sort_order),
   INDEX idx_is_active (is_active),
   FOREIGN KEY (agent_id) REFERENCES agent(id) ON DELETE CASCADE
-) ENGINE = InnoDB COMMENT = '智能体预设问题表';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '智能体预设问题表';
 
 -- 会话表
 CREATE TABLE IF NOT EXISTS chat_session (
   id VARCHAR(36) NOT NULL COMMENT '会话ID（UUID）',
   agent_id INT NOT NULL COMMENT '智能体ID',
-  title VARCHAR(255) DEFAULT '新对话' COMMENT '会话标题',
+  title VARCHAR(255) CHARACTER SET utf8mb4 DEFAULT '新对话' COMMENT '会话标题',
   status VARCHAR(50) DEFAULT 'active' COMMENT '状态：active-活跃，archived-归档，deleted-已删除',
   is_pinned TINYINT DEFAULT 0 COMMENT '是否置顶：0-否，1-是',
   user_id BIGINT COMMENT '用户ID',
@@ -186,7 +189,7 @@ CREATE TABLE IF NOT EXISTS chat_session (
   INDEX idx_is_pinned (is_pinned),
   INDEX idx_create_time (create_time),
   FOREIGN KEY (agent_id) REFERENCES agent(id) ON DELETE CASCADE
-) ENGINE = InnoDB COMMENT = '聊天会话表';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '聊天会话表';
 
 -- 消息表
 CREATE TABLE IF NOT EXISTS chat_message (
@@ -203,7 +206,7 @@ CREATE TABLE IF NOT EXISTS chat_message (
   INDEX idx_message_type (message_type),
   INDEX idx_create_time (create_time),
   FOREIGN KEY (session_id) REFERENCES chat_session(id) ON DELETE CASCADE
-) ENGINE = InnoDB COMMENT = '聊天消息表';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '聊天消息表';
 
 -- 用户Prompt配置表
 CREATE TABLE IF NOT EXISTS user_prompt_config (
@@ -226,7 +229,7 @@ CREATE TABLE IF NOT EXISTS user_prompt_config (
   INDEX idx_create_time (create_time),
   INDEX idx_prompt_type_enabled_priority (prompt_type, agent_id, enabled, priority DESC),
   INDEX idx_display_order (display_order ASC)
-) ENGINE = InnoDB COMMENT = '用户Prompt配置表';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户Prompt配置表';
 
 create table if not exists agent_datasource_tables
 (
@@ -241,7 +244,7 @@ create table if not exists agent_datasource_tables
         foreign key (agent_datasource_id) references agent_datasource (id)
             on update cascade on delete cascade
 )
-    comment '某个智能体某个数据源所选中的数据表';
+    ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT '某个智能体某个数据源所选中的数据表';
 
 
 -- 模型配置表

@@ -17,19 +17,22 @@
 可以在项目仓库获取测试表和数据：
 
 文件在：`data-agent-management/src/main/resources/sql`，里面有4个文件：
+
 - `schema.sql` - 功能相关的表结构
 - `data.sql` - 功能相关的数据
 - `product_schema.sql` - 模拟数据表结构
 - `product_data.sql` - 模拟数据
 
-将表和数据导入到你的MySQL数据库中。
-
-```bash
+```shell
+# 登录mysql
+mysql -u root -p
+# 创建数据库
+create database data_agent;
 # 示例：使用 MySQL 命令行导入
-mysql -u root -p your_database < data-agent-management/src/main/resources/sql/schema.sql
-mysql -u root -p your_database < data-agent-management/src/main/resources/sql/data.sql
-mysql -u root -p your_database < data-agent-management/src/main/resources/sql/product_schema.sql
-mysql -u root -p your_database < data-agent-management/src/main/resources/sql/product_data.sql
+mysql -u root -p data_agent < data-agent-management/src/main/resources/sql/schema.sql
+mysql -u root -p data_agent < data-agent-management/src/main/resources/sql/data.sql
+mysql -u root -p data_agent < data-agent-management/src/main/resources/sql/product_schema.sql
+mysql -u root -p data_agent < data-agent-management/src/main/resources/sql/product_data.sql
 ```
 
 ## ⚙️ 2. 配置
@@ -68,12 +71,11 @@ spring:
 
 2. 自定义及本地模型接入 (Ollama/自建网关) 本系统基于 Spring AI 架构，支持标准的 OpenAI 接口协议。如果您接入的是 Ollama 或其他自定义网关，请注意以下几点：
 
-	- 协议兼容：请参考 Spring AI 官方文档中关于 OpenAI 兼容性的说明，确保您的网关响应格式符合标准。
+- 协议兼容：请参考 Spring AI 官方文档中关于 OpenAI 兼容性的说明，确保您的网关响应格式符合标准。
 
-	- 地址配置：针对自部署模型，请准确填写 base-url（基础地址）和 completions-path（请求路径）。系统会将两者拼接为完整的调用地址，例如：http://localhost:11434/v1/chat/completions
+- 地址配置：针对自部署模型，请准确填写 base-url（基础地址）和 completions-path（请求路径）。系统会将两者拼接为完整的调用地址，例如：<http://localhost:11434/v1/chat/completions>
 
-3. 故障排查 如发现配置后无法调用，建议优先使用 Postman 对接您的接口地址进行测试，确认网络连通性及参数格式无误。
-
+1. 故障排查 如发现配置后无法调用，建议优先使用 Postman 对接您的接口地址进行测试，确认网络连通性及参数格式无误。
 
 ### 2.4 嵌入模型批处理策略配置
 
@@ -89,12 +91,12 @@ spring:
 
 ```xml
 <dependency>
-	<groupId>org.springframework.ai</groupId>
-	<artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
+ <groupId>org.springframework.ai</groupId>
+ <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
 </dependency>
 ```
 
-详细对应的向量库参考文档：https://springdoc.cn/spring-ai/api/vectordbs.html
+详细对应的向量库参考文档：<https://springdoc.cn/spring-ai/api/vectordbs.html>
 
 #### 2.5.2 向量库schema设置
 
@@ -222,13 +224,13 @@ npm run dev
 yarn dev
 ```
 
-启动成功后，访问地址 http://localhost:3000
+启动成功后，访问地址 <http://localhost:3000>
 
 ## 🎯 5. 系统体验
 
 ### 5.1 数据智能体的创建与配置
 
-访问 http://localhost:3000 ，可以看到当前项目的智能体列表（默认有四个占位智能体，并没有对接数据，可以删除掉然后创建新的智能体）
+访问 <http://localhost:3000> ，可以看到当前项目的智能体列表（默认有四个占位智能体，并没有对接数据，可以删除掉然后创建新的智能体）
 
 ![homepage-agents.png](../img/homepage-agents.png)
 
@@ -325,7 +327,6 @@ yarn dev
 "显示SQL运行结果"会在生成SQL和运行获取结果后，将SQL运行结果展示给用户。
 
 ![show-sql-result.png](../img/show-sql-result.png)
-
 
 ## 📚 下一步
 
