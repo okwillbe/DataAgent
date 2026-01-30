@@ -29,15 +29,19 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class ChatSession {
-
+	/* 主键 */
 	private String id; // UUID
 
+	/* 助手id */
 	private Integer agentId;
 
+	/* 会话标题 */
 	private String title;
 
+	/* 会话状态 */
 	private String status; // active, archived, deleted
 
+	/* 是否置顶 */
 	@Builder.Default
 	private Boolean isPinned = false; // Whether pinned
 
