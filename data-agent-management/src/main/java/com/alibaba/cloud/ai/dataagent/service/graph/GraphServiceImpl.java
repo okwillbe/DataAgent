@@ -64,9 +64,9 @@ public class GraphServiceImpl implements GraphService {
 	@Override
 	public String nl2sql(String naturalQuery, String agentId) throws GraphRunnerException {
 		OverAllState state = compiledGraph
-			.invoke(Map.of(IS_ONLY_NL2SQL, true, INPUT_KEY, naturalQuery, AGENT_ID, agentId),
-					RunnableConfig.builder().build())
-			.orElseThrow();
+				.invoke(Map.of(IS_ONLY_NL2SQL, true, INPUT_KEY, naturalQuery, AGENT_ID, agentId),
+						RunnableConfig.builder().build())
+				.orElseThrow();
 		return state.value(SQL_GENERATE_OUTPUT, "");
 	}
 
@@ -81,14 +81,14 @@ public class GraphServiceImpl implements GraphService {
 		context.setSink(sink);
 		if (StringUtils.hasText(graphRequest.getHumanFeedbackContent())) {
 			handleHumanFeedback(graphRequest);
-		}
-		else {
+		} else {
 			handleNewProcess(graphRequest);
 		}
 	}
 
 	/**
 	 * 停止指定 threadId 的流式处理 线程安全：使用 remove 操作确保只有一个线程能获取到 context
+	 * 
 	 * @param threadId 线程ID
 	 */
 	@Override
@@ -123,6 +123,7 @@ public class GraphServiceImpl implements GraphService {
 			log.warn("StreamContext already cleaned for threadId: {}, skipping stream start", threadId);
 			return;
 		}
+		// 构建多轮对话上下文文本
 		String multiTurnContext = multiTurnContextManager.buildContext(threadId);
 		multiTurnContextManager.beginTurn(threadId, query);
 		Flux<NodeOutput> nodeOutputFlux = compiledGraph.stream(
@@ -160,13 +161,12 @@ public class GraphServiceImpl implements GraphService {
 		RunnableConfig updatedConfig;
 		try {
 			updatedConfig = compiledGraph.updateState(baseConfig, stateUpdate);
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new IllegalStateException("Failed to update graph state for human feedback", e);
 		}
 		RunnableConfig resumeConfig = RunnableConfig.builder(updatedConfig)
-			.addMetadata(RunnableConfig.HUMAN_FEEDBACK_METADATA_KEY, feedbackData)
-			.build();
+				.addMetadata(RunnableConfig.HUMAN_FEEDBACK_METADATA_KEY, feedbackData)
+				.build();
 
 		Flux<NodeOutput> nodeOutputFlux = compiledGraph.stream(null, resumeConfig);
 		subscribeToFlux(context, nodeOutputFlux, graphRequest, agentId, threadId);
@@ -174,11 +174,12 @@ public class GraphServiceImpl implements GraphService {
 
 	/**
 	 * 订阅 Flux 并原子性地设置 Disposable 线程安全：使用 synchronized 确保 Disposable 设置的原子性
-	 * @param context 流式处理上下文
+	 * 
+	 * @param context        流式处理上下文
 	 * @param nodeOutputFlux 节点输出流
-	 * @param graphRequest 图请求
-	 * @param agentId 代理ID
-	 * @param threadId 线程ID
+	 * @param graphRequest   图请求
+	 * @param agentId        代理ID
+	 * @param threadId       线程ID
 	 */
 	private void subscribeToFlux(StreamContext context, Flux<NodeOutput> nodeOutputFlux, GraphRequest graphRequest,
 			String agentId, String threadId) {
@@ -198,8 +199,7 @@ public class GraphServiceImpl implements GraphService {
 					if (disposable != null && !disposable.isDisposed()) {
 						disposable.dispose();
 					}
-				}
-				else {
+				} else {
 					// 只有在未清理的情况下才设置 Disposable
 					context.setDisposable(disposable);
 				}
@@ -217,11 +217,11 @@ public class GraphServiceImpl implements GraphService {
 			// 检查 sink 是否还有订阅者
 			if (context.getSink().currentSubscriberCount() > 0) {
 				context.getSink()
-					.tryEmitNext(ServerSentEvent
-						.builder(GraphNodeResponse.error(agentId, threadId,
-								"Error in stream processing: " + error.getMessage()))
-						.event(STREAM_EVENT_ERROR)
-						.build());
+						.tryEmitNext(ServerSentEvent
+								.builder(GraphNodeResponse.error(agentId, threadId,
+										"Error in stream processing: " + error.getMessage()))
+								.event(STREAM_EVENT_ERROR)
+								.build());
 				context.getSink().tryEmitComplete();
 			}
 			// 清理资源（cleanup 内部已经保证只执行一次）
@@ -239,9 +239,9 @@ public class GraphServiceImpl implements GraphService {
 		if (context != null && !context.isCleaned() && context.getSink() != null) {
 			if (context.getSink().currentSubscriberCount() > 0) {
 				context.getSink()
-					.tryEmitNext(ServerSentEvent.builder(GraphNodeResponse.complete(agentId, threadId))
-						.event(STREAM_EVENT_COMPLETE)
-						.build());
+						.tryEmitNext(ServerSentEvent.builder(GraphNodeResponse.complete(agentId, threadId))
+								.event(STREAM_EVENT_COMPLETE)
+								.build());
 				context.getSink().tryEmitComplete();
 			}
 			context.cleanup();
@@ -284,8 +284,7 @@ public class GraphServiceImpl implements GraphService {
 				isTypeSign = true;
 			}
 			context.setTextType(textType);
-		}
-		else {
+		} else {
 			textType = TextType.getType(originType, chunk);
 			if (textType != originType) {
 				isTypeSign = true;
@@ -298,12 +297,12 @@ public class GraphServiceImpl implements GraphService {
 				multiTurnContextManager.appendPlannerChunk(threadId, chunk);
 			}
 			GraphNodeResponse response = GraphNodeResponse.builder()
-				.agentId(request.getAgentId())
-				.threadId(threadId)
-				.nodeName(node)
-				.text(chunk)
-				.textType(textType)
-				.build();
+					.agentId(request.getAgentId())
+					.threadId(threadId)
+					.nodeName(node)
+					.text(chunk)
+					.textType(textType)
+					.build();
 			// 检查发送是否成功，如果失败说明客户端已断开
 			Sinks.EmitResult result = context.getSink().tryEmitNext(ServerSentEvent.builder(response).build());
 			if (result.isFailure()) {

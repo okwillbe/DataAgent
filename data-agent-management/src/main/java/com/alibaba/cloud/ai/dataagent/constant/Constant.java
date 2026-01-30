@@ -40,6 +40,7 @@ public final class Constant {
 
 	public static final String QUERY_ENHANCE_NODE_OUTPUT = "QUERY_ENHANCE_NODE_OUTPUT";
 
+	// 可行性评估节点输出
 	public static final String FEASIBILITY_ASSESSMENT_NODE_OUTPUT = "FEASIBILITY_ASSESSMENT_NODE_OUTPUT";
 
 	public static final String EVIDENCE = "EVIDENCE";
@@ -69,8 +70,10 @@ public final class Constant {
 
 	public static final String SEMANTIC_CONSISTENCY_NODE_OUTPUT = "SEMANTIC_CONSISTENCY_NODE_OUTPUT";
 
+	// 计划节点输出
 	public static final String PLANNER_NODE_OUTPUT = "PLANNER_NODE_OUTPUT";
 
+	// SQL执行节点输出
 	public static final String SQL_EXECUTE_NODE_OUTPUT = "SQL_EXECUTE_NODE_OUTPUT";
 
 	// dialect
@@ -132,7 +135,8 @@ public final class Constant {
 	// 标记是否进入Python执行失败的降级模式（超过最大重试次数后触发）
 	public static final String PYTHON_FALLBACK_MODE = "PYTHON_FALLBACK_MODE";
 
-	// If code execution succeeds, output code running result; if fails, output error
+	// If code execution succeeds, output code running result; if fails, output
+	// error
 	// information
 	public static final String PYTHON_EXECUTE_NODE_OUTPUT = "PYTHON_EXECUTE_NODE_OUTPUT";
 

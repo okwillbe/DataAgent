@@ -26,18 +26,39 @@ import lombok.NoArgsConstructor;
 @Builder
 public class GraphRequest {
 
+	/**
+	 * Agent Id
+	 */
 	private String agentId;
 
+	/**
+	 * 线程ID
+	 */
 	private String threadId;
 
+	/**
+	 * 查询内容
+	 */
 	private String query;
 
+	/**
+	 * 是否需要人工审核
+	 */
 	private boolean humanFeedback;
 
+	/**
+	 * 人工审核内容
+	 */
 	private String humanFeedbackContent;
 
+	/**
+	 * 是否拒绝计划
+	 */
 	private boolean rejectedPlan;
 
+	/**
+	 * 是否仅NL2SQL
+	 */
 	private boolean nl2sqlOnly;
 
 }
