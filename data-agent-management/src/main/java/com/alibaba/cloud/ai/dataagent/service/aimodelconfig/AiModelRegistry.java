@@ -58,8 +58,7 @@ public class AiModelRegistry {
 							// 核心：基于新 Model 创建新 Client，彻底消除旧参数缓存
 							currentChatClient = ChatClient.builder(chatModel).build();
 						}
-					}
-					catch (Exception e) {
+					} catch (Exception e) {
 						log.error("Failed to initialize ChatClient: {}", e.getMessage(), e);
 					}
 
@@ -87,8 +86,7 @@ public class AiModelRegistry {
 						if (config != null) {
 							currentEmbeddingModel = modelFactory.createEmbeddingModel(config);
 						}
-					}
-					catch (Exception e) {
+					} catch (Exception e) {
 						log.error("Failed to initialize EmbeddingModel: {}", e.getMessage());
 					}
 
@@ -123,6 +121,9 @@ public class AiModelRegistry {
 	// =========================================================
 	private static class DummyEmbeddingModel implements EmbeddingModel {
 
+		// 默认维度：1536 (OpenAI 的标准维度)
+		private static final int DEFAULT_DIMENSIONS = 1536;
+
 		@Override
 		public EmbeddingResponse call(EmbeddingRequest request) {
 			throw new RuntimeException("No active EMBEDDING model. Please configure it first!");
@@ -130,17 +131,23 @@ public class AiModelRegistry {
 
 		@Override
 		public float[] embed(Document document) {
-			return new float[0];
+			// 返回符合维度的零向量，而不是空数组
+			// 这样可以通过 PGVector 的维度检查（vector must have at least 1 dimension）
+			return new float[DEFAULT_DIMENSIONS];
 		}
 
 		@Override
 		public float[] embed(String text) {
-			return new float[0];
+			// 返回符合维度的零向量，而不是空数组
+			return new float[DEFAULT_DIMENSIONS];
 		}
 
 		@Override
 		public List<float[]> embed(List<String> texts) {
-			return List.of();
+			// 为每个文本返回一个零向量
+			return texts.stream()
+					.map(text -> new float[DEFAULT_DIMENSIONS])
+					.toList();
 		}
 
 		@Override

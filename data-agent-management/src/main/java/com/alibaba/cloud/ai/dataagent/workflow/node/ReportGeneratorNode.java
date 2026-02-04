@@ -43,13 +43,23 @@ import java.util.Map;
 import static com.alibaba.cloud.ai.dataagent.constant.Constant.*;
 
 /**
- * Report generation node that creates comprehensive analysis reports based on execution
- * results.
- *
- * This node is responsible for: - Generating detailed analysis reports from SQL execution
- * results - Summarizing data insights and findings - Providing comprehensive answers to
- * user queries - Creating structured final output for users
- *
+ * 报表生成节点 - 基于执行结果创建综合分析报表
+ * 
+ * 该节点是数据分析工作流的最后一个环节,负责整合前置节点的所有输出,生成最终的用户报表。
+ * 
+ * 核心功能:
+ * 1. 整合用户需求和执行计划(来自PlannerNode)
+ * 2. 整合SQL执行结果和分析数据(来自SqlExecuteNode等执行节点,包含JSON格式的数据)
+ * 3. 整合数据总结和推荐(来自前置节点对数据的分析洞察)
+ * 4. 应用用户自定义的优化提示词配置(个性化报表生成)
+ * 5. 调用LLM生成结构化的Markdown格式报表
+ * 
+ * 工作流程:
+ * - 从State中获取前置节点的输出(PLANNER_NODE_OUTPUT, SQL_EXECUTE_NODE_OUTPUT等)
+ * - 构建包含所有上下文信息的报表生成提示词
+ * - 通过LLM流式生成最终报表内容
+ * - 返回Markdown格式的报表给用户
+ * 
  * @author zhangshenghang
  */
 @Slf4j
@@ -92,8 +102,7 @@ public class ReportGeneratorNode implements NodeAction {
 			if (agentIdStr != null) {
 				agentId = Long.parseLong(agentIdStr);
 			}
-		}
-		catch (NumberFormatException ignore) {
+		} catch (NumberFormatException ignore) {
 			// ignore parse error, treat as global config
 		}
 
@@ -139,23 +148,58 @@ public class ReportGeneratorNode implements NodeAction {
 	}
 
 	/**
-	 * Generates the analysis report.
+	 * 生成分析报表
+	 * 
+	 * 该方法负责准备报表生成所需的所有数据,并调用LLM生成最终报表。
+	 * 
+	 * 数据准备流程:
+	 * 1. 构建用户需求和计划描述(userRequirementsAndPlan):
+	 * - 用户原始输入
+	 * - 执行计划的思考过程
+	 * - 详细的执行步骤列表
+	 * 
+	 * 2. 构建分析步骤和数据结果(analysisStepsAndData):
+	 * - 每个步骤的SQL查询语句
+	 * - 每个步骤的JSON格式执行结果
+	 * - 步骤的参数描述
+	 * 
+	 * 3. 获取总结和推荐(summaryAndRecommendations):
+	 * - 从当前执行步骤中获取前置节点生成的数据洞察
+	 * 
+	 * 4. 加载用户自定义优化配置(optimizationConfigs):
+	 * - 优先按智能体ID加载配置
+	 * - 如果没有智能体配置,则加载全局配置
+	 * 
+	 * 5. 调用PromptHelper整合所有数据生成最终提示词
+	 * 
+	 * 6. 通过LLM服务流式生成报表内容
+	 * 
+	 * @param userInput                 用户原始输入问题
+	 * @param plan                      执行计划对象,包含思考过程和执行步骤
+	 * @param executionResults          SQL执行结果Map,key为step_N,value为JSON格式的执行结果
+	 * @param summaryAndRecommendations 前置节点生成的总结和推荐内容
+	 * @param agentId                   智能体ID,用于加载特定智能体的优化配置
+	 * @return LLM流式生成的报表内容Flux
 	 */
 	private Flux<ChatResponse> generateReport(String userInput, Plan plan, HashMap<String, String> executionResults,
 			String summaryAndRecommendations, Long agentId) {
-		// Build user requirements and plan description
+		// 构建用户需求和计划描述:整合用户问题、思考过程和执行步骤
 		String userRequirementsAndPlan = buildUserRequirementsAndPlan(userInput, plan);
 
-		// Build analysis steps and data results description
+		// 构建分析步骤和数据结果描述:整合SQL查询和JSON格式的执行结果
 		String analysisStepsAndData = buildAnalysisStepsAndData(plan, executionResults);
 
-		// Get optimization configs if available (优先按智能体加载)
+		// 获取优化配置(优先按智能体加载,如果agentId为null则加载全局配置)
 		List<UserPromptConfig> optimizationConfigs = promptConfigService.getOptimizationConfigs("report-generator",
 				agentId);
 
+		// 调用PromptHelper整合所有数据源,生成完整的报表生成提示词
+		// 该提示词包含:用户需求、执行计划、分析数据、总结推荐、用户自定义优化要求、报表JSON示例
 		String reportPrompt = PromptHelper.buildReportGeneratorPromptWithOptimization(userRequirementsAndPlan,
 				analysisStepsAndData, summaryAndRecommendations, optimizationConfigs);
 		log.debug("Report Node Prompt: \n {} \n", reportPrompt);
+
+		// 调用LLM服务,流式生成最终报表内容
 		return llmService.callUser(reportPrompt);
 	}
 
@@ -194,8 +238,7 @@ public class ReportGeneratorNode implements NodeAction {
 
 		if (executionResults.isEmpty()) {
 			sb.append("暂无执行结果数据\n");
-		}
-		else {
+		} else {
 			List<ExecutionStep> executionPlan = plan.getExecutionPlan();
 			for (Map.Entry<String, String> entry : executionResults.entrySet()) {
 				String stepKey = entry.getKey();
@@ -214,13 +257,12 @@ public class ReportGeneratorNode implements NodeAction {
 							sb.append("**参数描述**: ").append(step.getToolParameters().getInstruction()).append("\n");
 							if (step.getToolParameters().getSqlQuery() != null) {
 								sb.append("**执行SQL**: \n```sql\n")
-									.append(step.getToolParameters().getSqlQuery())
-									.append("\n```\n");
+										.append(step.getToolParameters().getSqlQuery())
+										.append("\n```\n");
 							}
 						}
 					}
-				}
-				catch (NumberFormatException e) {
+				} catch (NumberFormatException e) {
 					// Ignore parsing errors
 				}
 

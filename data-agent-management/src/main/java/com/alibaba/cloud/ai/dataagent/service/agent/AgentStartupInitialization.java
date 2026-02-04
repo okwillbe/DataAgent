@@ -53,8 +53,7 @@ public class AgentStartupInitialization implements ApplicationRunner, Disposable
 				return null;
 			});
 
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			log.error("Failed to start agent initialization process", e);
 		}
 	}
@@ -80,14 +79,12 @@ public class AgentStartupInitialization implements ApplicationRunner, Disposable
 					if (initialized) {
 						successCount++;
 						log.info("Successfully initialized agent: {} (ID: {})", agent.getName(), agent.getId());
-					}
-					else {
+					} else {
 						failureCount++;
 						log.warn("Failed to initialize agent: {} (ID: {}) - no active datasource or tables",
 								agent.getName(), agent.getId());
 					}
-				}
-				catch (Exception e) {
+				} catch (Exception e) {
 					failureCount++;
 					log.error("Error initializing agent: {} (ID: {}, reason: {})", agent.getName(), agent.getId(),
 							e.getMessage());
@@ -95,8 +92,7 @@ public class AgentStartupInitialization implements ApplicationRunner, Disposable
 
 				try {
 					Thread.sleep(1000);
-				}
-				catch (InterruptedException e) {
+				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					break;
 				}
@@ -105,14 +101,14 @@ public class AgentStartupInitialization implements ApplicationRunner, Disposable
 			log.info("Agent initialization completed. Success: {}, Failed: {}, Total: {}", successCount, failureCount,
 					publishedAgents.size());
 
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			log.error("Error during published agents initialization", e);
 		}
 	}
 
 	/**
 	 * Initialize the data source for a single agent
+	 * 
 	 * @param agent The agent
 	 * @return Whether the initialization was successful
 	 */
@@ -129,11 +125,23 @@ public class AgentStartupInitialization implements ApplicationRunner, Disposable
 
 			AgentDatasource activeDatasource = agentDatasourceService.getCurrentAgentDatasource(agentId);
 
+			// 检查数据源是否存在
+			if (activeDatasource == null) {
+				log.warn("No active datasource found for agent {}", agentId);
+				return false;
+			}
+
+			// 检查数据源 ID 是否为 null
 			Integer datasourceId = activeDatasource.getDatasourceId();
+			if (datasourceId == null) {
+				log.warn("Datasource ID is null for agent {}", agentId);
+				return false;
+			}
 
 			List<String> tables = activeDatasource.getSelectTables();
 
-			if (tables.isEmpty()) {
+			// 检查选中的表列表是否为 null 或空
+			if (tables == null || tables.isEmpty()) {
 				log.warn("Datasource {} has no tables available for agent {}", datasourceId, agentId);
 				return false;
 			}
@@ -146,14 +154,12 @@ public class AgentStartupInitialization implements ApplicationRunner, Disposable
 			if (result) {
 				log.info("Successfully initialized datasource for agent {} with {} tables", agentId, tables.size());
 				return true;
-			}
-			else {
+			} else {
 				log.error("Failed to initialize datasource for agent {}", agentId);
 				return false;
 			}
 
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			log.error("Error initializing datasource for agent {}, reason: {}", agent.getId(), e.getMessage());
 			return false;
 		}
@@ -163,15 +169,15 @@ public class AgentStartupInitialization implements ApplicationRunner, Disposable
 		try {
 			String agentIdStr = String.valueOf(agentId);
 			return agentVectorStoreService.hasDocuments(agentIdStr);
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			log.error("Failed to check initialization status for agent: {}, assuming not initialized", agentId, e);
 			return false;
 		}
 	}
 
 	/**
-	 * Clean up resources when the application shuts down. Implement the destroy method of
+	 * Clean up resources when the application shuts down. Implement the destroy
+	 * method of
 	 * the DisposableBean interface
 	 */
 	@Override

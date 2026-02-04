@@ -73,9 +73,8 @@ public class PromptHelper {
 		sb.append("# Table: ").append(tableDTO.getName());
 		if (!StringUtils.equals(tableDTO.getName(), tableDTO.getDescription())) {
 			sb.append(StringUtils.isBlank(tableDTO.getDescription()) ? "" : ", " + tableDTO.getDescription())
-				.append("\n");
-		}
-		else {
+					.append("\n");
+		} else {
 			sb.append("\n");
 		}
 		sb.append("[\n");
@@ -83,9 +82,10 @@ public class PromptHelper {
 		for (ColumnDTO columnDTO : tableDTO.getColumn()) {
 			StringBuilder line = new StringBuilder();
 			line.append("(")
-				.append(columnDTO.getName())
-				.append(BooleanUtils.isTrue(withColumnType)
-						? ":" + StringUtils.defaultString(columnDTO.getType(), "").toUpperCase(Locale.ROOT) : "");
+					.append(columnDTO.getName())
+					.append(BooleanUtils.isTrue(withColumnType)
+							? ":" + StringUtils.defaultString(columnDTO.getType(), "").toUpperCase(Locale.ROOT)
+							: "");
 			if (!StringUtils.equals(columnDTO.getDescription(), columnDTO.getName())) {
 				line.append(", ").append(StringUtils.defaultString(columnDTO.getDescription(), ""));
 			}
@@ -94,10 +94,10 @@ public class PromptHelper {
 				line.append(", Primary Key");
 			}
 			List<String> enumData = Optional.ofNullable(columnDTO.getData())
-				.orElse(new ArrayList<>())
-				.stream()
-				.filter(d -> !StringUtils.isEmpty(d))
-				.collect(Collectors.toList());
+					.orElse(new ArrayList<>())
+					.stream()
+					.filter(d -> !StringUtils.isEmpty(d))
+					.collect(Collectors.toList());
 			if (CollectionUtils.isNotEmpty(enumData) && !"id".equals(columnDTO.getName())) {
 				line.append(", Examples: [");
 				List<String> data = new ArrayList<>(enumData.subList(0, Math.min(3, enumData.size())));
@@ -135,26 +135,46 @@ public class PromptHelper {
 	}
 
 	/**
-	 * Build report generation prompt with custom prompt
-	 * @param userRequirementsAndPlan user requirements and plan
-	 * @param analysisStepsAndData analysis steps and data
-	 * @param summaryAndRecommendations summary and recommendations
-	 * @return built prompt
+	 * 构建报表生成提示词(支持用户自定义优化配置)
+	 * 
+	 * 该方法整合多个数据源,生成最终的报表生成提示词:
+	 * 1. 用户需求和执行计划 - 来自PlannerNode的规划结果
+	 * 2. 分析步骤和数据 - 来自各个执行节点(如SqlExecuteNode)的分析结果和JSON数据
+	 * 3. 总结和推荐 - 来自前置节点生成的数据洞察和建议
+	 * 4. 用户自定义提示词 - 用户配置的个性化优化要求
+	 * 5. 报表JSON示例 - 用于指导LLM生成符合格式的报表
+	 * 
+	 * @param userRequirementsAndPlan   用户需求和执行计划,包含用户原始问题和计划的思考过程
+	 * @param analysisStepsAndData      分析步骤和数据结果,包含各节点的SQL执行结果(JSON格式)
+	 * @param summaryAndRecommendations 总结和推荐内容,前置节点对数据的分析总结
+	 * @param optimizationConfigs       用户自定义的优化配置列表,用于个性化报表生成
+	 * @return 完整的报表生成提示词,用于调用LLM生成最终报表
 	 */
 	public static String buildReportGeneratorPromptWithOptimization(String userRequirementsAndPlan,
 			String analysisStepsAndData, String summaryAndRecommendations, List<UserPromptConfig> optimizationConfigs) {
 
+		// 准备模板参数Map,用于渲染报表生成提示词模板
 		Map<String, Object> params = new HashMap<>();
+
+		// 1. 用户需求和计划:包含用户原始问题、执行计划的思考过程和详细步骤
 		params.put("user_requirements_and_plan", userRequirementsAndPlan);
+
+		// 2. 分析步骤和数据:包含各个执行节点的SQL查询和对应的JSON格式执行结果
 		params.put("analysis_steps_and_data", analysisStepsAndData);
+
+		// 3. 总结和推荐:前置节点基于数据分析生成的洞察和建议
 		params.put("summary_and_recommendations", summaryAndRecommendations);
+
+		// 4. 报表JSON示例:提供标准的报表格式示例,指导LLM生成符合规范的报表结构
 		params.put("json_example", cleanJsonExample);
 
-		// Build optional optimization section content from user configs
+		// 5. 构建用户自定义优化部分:根据用户配置的优化提示词,生成个性化的优化要求
+		// 这些优化配置可以指导LLM按照特定风格、格式或侧重点生成报表
 		String optimizationSection = buildOptimizationSection(optimizationConfigs, params);
 		params.put("optimization_section", optimizationSection);
 
-		// only plain report
+		// 使用纯文本报表模板渲染最终提示词
+		// 该模板会将上述所有参数整合成一个完整的提示词,发送给LLM生成最终报表
 		return PromptConstant.getReportGeneratorPlainPromptTemplate().render(params);
 	}
 
@@ -202,8 +222,9 @@ public class PromptHelper {
 
 	/**
 	 * 构建优化提示词部分内容
+	 * 
 	 * @param optimizationConfigs 优化配置列表
-	 * @param params 模板参数
+	 * @param params              模板参数
 	 * @return 优化部分的内容
 	 */
 	private static String buildOptimizationSection(List<UserPromptConfig> optimizationConfigs,
@@ -228,7 +249,8 @@ public class PromptHelper {
 
 	/**
 	 * 构建意图识别提示词
-	 * @param multiTurn 多轮对话历史
+	 * 
+	 * @param multiTurn   多轮对话历史
 	 * @param latestQuery 最新用户输入
 	 * @return 意图识别提示词
 	 */
@@ -244,7 +266,8 @@ public class PromptHelper {
 
 	/**
 	 * 构建查询处理提示词
-	 * @param multiTurn 多轮对话历史
+	 * 
+	 * @param multiTurn   多轮对话历史
 	 * @param latestQuery 最新用户输入
 	 * @return 查询处理提示词
 	 */
@@ -272,10 +295,11 @@ public class PromptHelper {
 
 	/**
 	 * 构建可行性评估提示词
+	 * 
 	 * @param canonicalQuery 规范化查询
 	 * @param recalledSchema 召回的数据库Schema
-	 * @param evidence 参考信息
-	 * @param multiTurn 多轮对话历史
+	 * @param evidence       参考信息
+	 * @param multiTurn      多轮对话历史
 	 * @return 可行性评估提示词
 	 */
 	public static String buildFeasibilityAssessmentPrompt(String canonicalQuery, SchemaDTO recalledSchema,
@@ -291,7 +315,8 @@ public class PromptHelper {
 
 	/**
 	 * 构建查询重写提示词
-	 * @param multiTurn 多轮对话历史
+	 * 
+	 * @param multiTurn   多轮对话历史
 	 * @param latestQuery 最新用户输入
 	 * @return 查询重写提示词
 	 */
@@ -307,8 +332,9 @@ public class PromptHelper {
 
 	/**
 	 * 渲染优化提示词模板
+	 * 
 	 * @param optimizationPrompt 优化提示词模板
-	 * @param params 参数
+	 * @param params             参数
 	 * @return 渲染后的内容
 	 */
 	private static String renderOptimizationPrompt(String optimizationPrompt, Map<String, Object> params) {
@@ -317,8 +343,7 @@ public class PromptHelper {
 		}
 		try {
 			return new PromptTemplate(optimizationPrompt).render(params);
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			// 如果模板渲染失败，直接返回原始内容
 			return optimizationPrompt;
 		}

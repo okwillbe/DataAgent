@@ -58,3 +58,6 @@ modified_mcp_config.json
 
 uploads/*
 .java-version
+
+migration_dump.sql
+.agent/skills/*

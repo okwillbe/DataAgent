@@ -81,9 +81,10 @@ public class PythonAnalyzeNode implements NodeAction {
 			return Map.of(PYTHON_ANALYSIS_NODE_OUTPUT, generator);
 		}
 
+		// 将python分析提示动态渲染
 		String systemPrompt = PromptConstant.getPythonAnalyzePromptTemplate()
-			.render(Map.of("python_output", pythonOutput, "user_query", userQuery));
-
+				.render(Map.of("python_output", pythonOutput, "user_query", userQuery));
+		// 给大模型分析
 		Flux<ChatResponse> pythonAnalyzeFlux = llmService.callSystem(systemPrompt);
 
 		Flux<GraphResponse<StreamingOutput>> generator = FluxUtil.createStreamingGeneratorWithMessages(this.getClass(),

@@ -6,7 +6,11 @@
 1. **纯净输出**：只输出可执行的Python代码，禁止包含任何额外说明或自然语言。在代码内部需要有适量的注释方便阅读。
    - **特别注意**：模型输出的文本直接接入Python解释器运行，因此不要添加任何额外符号，**比如Markdown的代码块标记符号**！
 2. **输入规范**：从`sys.stdin`读取JSON数据（List[Dict]），使用`json.load(sys.stdin)`。
-3. **输出规范**：最终结果必须是JSON对象（Dict），通过`print(json.dumps(result, ensure_ascii=False))`输出，JSON字段可以自定义，但要满足用户需求。
+3. **输出规范**：最终结果必须是JSON对象（Dict），通过`print(json.dumps(result, ensure_ascii=False))`输出。**输出后必须执行 `sys.stdout.flush()`** 以确保数据立即送达。
+4. **健壮性**：
+   - **输入检查**：在处理前检查输入数据是否为空。
+   - **类型转换**：使用 `try-except` 或 `errors='coerce'` 进行数值转换。
+   - **NaN处理**：输出前必须将 `NaN`/`Infinity` 替换为 `None`，否则Java端无法解析标准JSON。
 4. **错误处理**：使用以下结构捕获所有异常：
    ```python
    import traceback
@@ -44,10 +48,20 @@ try:
 
     # 将输入数据转换为DataFrame以便于分析
     df = pd.DataFrame(input_data)
+    
+    # 调试输出：打印实际的列名到stderr，方便排查问题
+    print(f"DEBUG: 实际列名: {{list(df.columns)}}", file=sys.stderr)
+    print(f"DEBUG: 数据行数: {{len(df)}}", file=sys.stderr)
+    sys.stderr.flush()
 
     # 自动类型推断：将字符串形式的数值转换为实际数值类型（解决后端统一返回字符串的问题）
+    # 自动类型推断：尝试将列转换为数值类型
     for col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors='ignore')
+        try:
+            df[col] = pd.to_numeric(df[col])
+        except Exception:
+            # 转换失败（列中包含无法转换的字符），保留原样
+            pass
 
     # 动态分析逻辑
     # 示例：计算某些统计指标
@@ -69,8 +83,14 @@ try:
     grouped = df.groupby(list(df.columns[:2])).size().reset_index(name="count")
     result["details"] = grouped.to_dict(orient="records")
 
+    # 处理 NaN 值：将 DataFrame 中的 NaN 替换为 None，防止 JSON 输出标准不支持的 NaN
+    # 注意：df.to_dict() 会保留 NaN，json.dumps 默认输出 NaN，Java 可能无法解析
+    # 这里提供一种通用处理方式 (递归处理 result 字典中的 NaN 比较复杂，建议在 df 阶段处理)
+    # 或者自定义 encoder (略复杂)，简单方式是 df = df.where(pd.notnull(df), None)
+
     # 输出结果为JSON对象
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=False, default=lambda x: None if pd.isna(x) else str(x)))
+    sys.stdout.flush()
 
 except Exception:
     # 捕获异常并输出堆栈信息到stderr
@@ -83,9 +103,10 @@ except Exception:
 # 注意事项
 
 1. **输入验证**：确保代码能够正确处理空输入或格式不正确的输入，并在异常时提供清晰的错误信息。**处理的数据必须来自`json.load(sys.stdin)`**。
-2. **类型转换**：由于后端SQL查询结果统一转换为字符串格式，**必须在DataFrame创建后进行类型推断**，使用`pd.to_numeric()`将数值字符串转换为实际数值类型，以便进行数学运算和统计分析。
+2. **类型转换**：由于后端SQL查询结果统一转换为字符串格式，**必须在DataFrame创建后进行类型推断**。为了兼容不同版本的 Pandas，**不要使用** `errors='ignore'` 参数，而是使用 `try-except` 结构尝试转换每列，失败则跳过。
 3. **性能优化**：尽量减少不必要的计算和内存占用，确保代码在性能约束内高效运行。
 4. **结果完整性**：输出的JSON对象应全面反映分析结果,且字段命名清晰易懂。
+5. **数值计算**：对于涉及排序(`nlargest`)、求和等计算的特定列，**不要依赖通用的类型推断**，请在使用前再次显式强制转换，例如：`df['sales'] = pd.to_numeric(df['sales'], errors='coerce').fillna(0)`，以确保由字符串造成的异常值不会导致计算错误或排序失效。
 
 ---
 
@@ -107,8 +128,12 @@ try:
     df = pd.DataFrame(input_data)
 
     # 自动类型推断：将字符串形式的数值转换为实际数值类型
+    # 自动类型推断：尝试将列转换为数值类型
     for col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors='ignore')
+        try:
+            df[col] = pd.to_numeric(df[col])
+        except Exception:
+            pass
 
     # 动态分析逻辑
     result = \{
@@ -124,8 +149,14 @@ try:
 
         result["channel_stats"] = grouped.to_dict(orient="records")
 
+    # 处理 NaN 值：将 DataFrame 中的 NaN 替换为 None，防止 JSON 输出标准不支持的 NaN
+    # 注意：df.to_dict() 会保留 NaN，json.dumps 默认输出 NaN，Java 可能无法解析
+    # 这里提供一种通用处理方式 (递归处理 result 字典中的 NaN 比较复杂，建议在 df 阶段处理)
+    # 或者自定义 encoder (略复杂)，简单方式是 df = df.where(pd.notnull(df), None)
+
     # 输出结果为JSON对象
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=False, default=lambda x: None if pd.isna(x) else str(x)))
+    sys.stdout.flush()
 
 except Exception:
     # 捕获异常并输出堆栈信息到stderr

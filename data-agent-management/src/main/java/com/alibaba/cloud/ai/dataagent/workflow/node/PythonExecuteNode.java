@@ -72,7 +72,8 @@ public class PythonExecuteNode implements NodeAction {
 			// Get context
 			String pythonCode = StateUtil.getStringValue(state, PYTHON_GENERATE_NODE_OUTPUT);
 			List<Map<String, String>> sqlResults = StateUtil.hasValue(state, SQL_RESULT_LIST_MEMORY)
-					? StateUtil.getListValue(state, SQL_RESULT_LIST_MEMORY) : new ArrayList<>();
+					? StateUtil.getListValue(state, SQL_RESULT_LIST_MEMORY)
+					: new ArrayList<>();
 
 			// 检查重试次数
 			int triesCount = StateUtil.getObjectValue(state, PYTHON_TRIES_COUNT, Integer.class, 0);
@@ -87,6 +88,18 @@ public class PythonExecuteNode implements NodeAction {
 						+ taskResponse.stdErr() + "\nExceptionMsg: " + taskResponse.exceptionMsg();
 				log.error(errorMsg);
 
+				// 增加详细的调试信息
+				log.error("=== Python执行失败详细信息 ===");
+				log.error("Python代码内容:\n{}", pythonCode);
+				log.error("输入数据 (前1000字符): {}",
+						objectMapper.writeValueAsString(sqlResults).length() > 1000
+								? objectMapper.writeValueAsString(sqlResults).substring(0, 1000) + "..."
+								: objectMapper.writeValueAsString(sqlResults));
+				log.error("StdOut长度: {}, StdErr长度: {}",
+						taskResponse.stdOut() == null ? 0 : taskResponse.stdOut().length(),
+						taskResponse.stdErr() == null ? 0 : taskResponse.stdErr().length());
+				log.error("================================");
+
 				// 检查是否超过最大重试次数
 				if (triesCount >= codeExecutorProperties.getPythonMaxTriesCount()) {
 					log.error("Python执行失败且已超过最大重试次数（已尝试次数：{}），启动降级兜底逻辑。错误信息: {}", triesCount, errorMsg);
@@ -100,10 +113,10 @@ public class PythonExecuteNode implements NodeAction {
 					});
 
 					Flux<GraphResponse<StreamingOutput>> fallbackGenerator = FluxUtil
-						.createStreamingGeneratorWithMessages(this.getClass(), state,
-								v -> Map.of(PYTHON_EXECUTE_NODE_OUTPUT, fallbackOutput, PYTHON_IS_SUCCESS, false,
-										PYTHON_FALLBACK_MODE, true),
-								fallbackDisplayFlux);
+							.createStreamingGeneratorWithMessages(this.getClass(), state,
+									v -> Map.of(PYTHON_EXECUTE_NODE_OUTPUT, fallbackOutput, PYTHON_IS_SUCCESS, false,
+											PYTHON_FALLBACK_MODE, true),
+									fallbackDisplayFlux);
 
 					return Map.of(PYTHON_EXECUTE_NODE_OUTPUT, fallbackGenerator);
 				}
@@ -139,10 +152,27 @@ public class PythonExecuteNode implements NodeAction {
 					v -> Map.of(PYTHON_EXECUTE_NODE_OUTPUT, finalStdout, PYTHON_IS_SUCCESS, true), displayFlux);
 
 			return Map.of(PYTHON_EXECUTE_NODE_OUTPUT, generator);
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
+			// 获取完整的异常堆栈信息
 			String errorMessage = e.getMessage();
-			log.error("Python Execute Exception: {}", errorMessage);
+
+			// 尝试获取Python代码和输入数据，用于调试
+			String pythonCode = "";
+			String inputData = "";
+			try {
+				pythonCode = StateUtil.getStringValue(state, PYTHON_GENERATE_NODE_OUTPUT);
+				List<Map<String, String>> sqlResults = StateUtil.hasValue(state, SQL_RESULT_LIST_MEMORY)
+						? StateUtil.getListValue(state, SQL_RESULT_LIST_MEMORY)
+						: new ArrayList<>();
+				inputData = objectMapper.writeValueAsString(sqlResults);
+			} catch (Exception ex) {
+				log.warn("无法获取Python代码或输入数据用于错误日志: {}", ex.getMessage());
+			}
+
+			// 打印完整的异常堆栈和上下文信息
+			log.error("Python Execute Exception: {}", errorMessage, e);
+			log.error("Python代码内容:\n{}", pythonCode);
+			log.error("输入数据 (前500字符): {}", inputData.length() > 500 ? inputData.substring(0, 500) + "..." : inputData);
 
 			// Prepare error result
 			Map<String, Object> errorResult = Map.of(PYTHON_EXECUTE_NODE_OUTPUT, errorMessage, PYTHON_IS_SUCCESS,
